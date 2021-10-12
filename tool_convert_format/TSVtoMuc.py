@@ -1,4 +1,8 @@
 import os
+
+
+# Dữ liệu nằm ở E:\VLSP\VLSP-2021\Statistic\annotation
+# Trong đó bao gồm các folder là tên file gốc (....conll)
 def process_case_3(data):
     # print("trước khi")
     seg = "<ENAMEX TYPE=\"" + data[0][4][:data[0][4].find('[')] + "\">"
@@ -54,6 +58,7 @@ def segment_ner(data):
     id = 0
     state = False
     # kiểm tra xem thuộc trường hợp nào?
+    # print("ner = ")
     for i in range(len(data)):
         # print(data[i])
         if data[i][3] == '*':
@@ -103,7 +108,6 @@ def segment_ner(data):
             matrix_extend.append(e)
         seg.append(process_case_3(matrix_extend))
 
-    # print("Seg = ", seg)
     return seg
 
 
@@ -117,8 +121,10 @@ def merge_paragraph_ner(data):
             # xử lí phần dữ liệu có ner trc đó:
             if len(data_ner) != 0:
                 new_data = segment_ner(data_ner)
+                # print("new_data = ", new_data)
                 for d in new_data:
                     paragraph.append(d)
+                # paragraph.append(new_data[:-1])
                 data_ner = []
             paragraph.append(data[i])
         else:
@@ -128,9 +134,10 @@ def merge_paragraph_ner(data):
 
     if len(data_ner) != 0:
         new_data = segment_ner(data_ner)
+        # print("new_data = ", new_data)
         for d in new_data:
             paragraph.append(d)
-
+        # paragraph.append(new_data[:-1])
     return paragraph
 
 
@@ -159,96 +166,108 @@ def merge_paragraph_no_ner(data):
     # print(paragraph)
     return paragraph
 
+def clear_paragraph(paragraph):
+    # print(paragraph)
+    if len(paragraph) > 1:
+        new_paragraph = []
+        i = 0
+        while i < len(paragraph)-1:
+            id_word_a = int(paragraph[i][0].split("-")[1])
+            id_word_b = int(paragraph[i+1][0].split("-")[1])
+            # print(paragraph[i])
+            if id_word_a > id_word_b:
+                # print("loix ")
+                # print(paragraph[i])
+                # print(paragraph[i+1])
+                new_paragraph.append(paragraph[i+1])
+                i+=1
+            else:
+                new_paragraph.append(paragraph[i])
+            i+=1
+        id_word_a = int(paragraph[-2][0].split("-")[1])
+        id_word_b = int(paragraph[-1][0].split("-")[1])
+        if id_word_a > id_word_b:
+            new_paragraph = new_paragraph[:-1]
+        new_paragraph.append(paragraph[-1])
+        return new_paragraph
+    else:
+        return paragraph
 
-def make_form_muc(data_tsv):
+def make_Muc(data):
     text = ""
+    # print(data)
+    data_paragraph = []
+    state = False  # trạng thái này kiểm tra xem có ner trong đoạn hay k?. Khởi tạo là True
+    for line in data[4:]:
+        line = line.strip()
+        # print(line)
+        if "#" in line:
+            continue
+        elif line == '':
+            # chia thành 2 trường hợp:
+            # Trường hợp 1: Không có nhãn trong đoạn:
 
-    for paragraph in data_tsv:
-        max_no_ner = 0
-        paragraph_data = []
-        for word in paragraph:
-            line_data = word.split("\t")
-            # print(line_data)
-            ners = []
-            if line_data[3] != "_":
-                ners = line_data[4].split("|")
-                if max_no_ner < len(ners):
-                    max_no_ner = len(ners)
-            word = line_data[2]
-            span = line_data[1].split('-')
+            if not state and len(data_paragraph) > 0:
+                # print("day")
+                paragraph = merge_paragraph_no_ner(data_paragraph)
+                text += paragraph
+
+            # Trường hợp 2: Có nhãn trong đoạn:
+            else:
+                paragraph = merge_paragraph_ner(data_paragraph)
+                # print("paragraph = ")
+                paragraph = clear_paragraph(paragraph)
+                # for p in paragraph:
+                #     print(p)
+                text += merge_paragraph_no_ner(paragraph)
+                # ở đây thực chất là ghép ner vào trong từ sau đó là bỏ phần ner phía sau đi
+
+                # text += paragraph
+                state = False
+
+            text += "\n"
+            data_paragraph = []
+
+        else:
+            # print(line)
+            dataframe = line.strip().split('\t')
+            p_w = dataframe[0]  # p_w: là paragraph_word
+            span = dataframe[1]  # span: vị trí của từ trong text
+            span = span.split('-')
             # print(span)
             start = int(span[0])
             end = int(span[1])
             span = [start, end]
-            paragraph_data.append([span, word, ners])
-        # print(max_no_ner)
-        # print(paragraph_data)
-        for p in range(len(paragraph_data)):
+            word = dataframe[2]
 
-            while len(paragraph_data[p][2]) < max_no_ner:
-                paragraph_data[p][2].append('_')
-            # print(paragraph_data[p])
+            if len(dataframe) == 5:
+                id_ner = dataframe[3]
+                ner = dataframe[4]
+                data_paragraph.append([p_w, span, word, id_ner, ner])
+                if id_ner != '_':
+                    state = True
 
-        state = True
-        id_temp = 0
-        for i in reversed(range(max_no_ner)):
-            id_temp = 0
-            for j in range(len(paragraph_data)):
-                ner = paragraph_data[j][2][i]
-                if "_" not in ner:
-                    print(paragraph_data[j])
-                    if "[" in ner:
-                        id_ner_a = int(ner[ner.find("[") + 1: -1])
-                        if id_temp == id_ner_a:
-                            continue
-                        else:
-                            print(str(paragraph_data[j][1]) + "</ENAMEX>")
-                        print("<ENAMEX TYPE=\"" + str(ner) + "\">" + paragraph_data[j][1])
-                    else:
-                        print("<ENAMEX TYPE=\"" + str(ner) +"\">"+ paragraph_data[j][1] + "</ENAMEX>")
-                paragraph_data[j][2] = paragraph_data[j][2][:-1]
+            if len(dataframe) == 3:
+                id_ner = "_"
+                ner = "_"
+                data_paragraph.append([p_w, span, word, id_ner, ner])
+                state = False
 
-
-            print()
-        print()
+    if len(data_paragraph) > 0 and state == False:
+        # print("day2")
+        paragraph = merge_paragraph_no_ner(data_paragraph)
+        text += paragraph
+    if len(data_paragraph) > 0 and state == True:
+        paragraph = merge_paragraph_ner(data_paragraph)
+        # print("paragraph = ")
+        paragraph = clear_paragraph(paragraph)
+        # for p in paragraph:
+        #     print(p)
+        text += merge_paragraph_no_ner(paragraph)
+    # print(text)
+    text += "\n"
     return text
 
-
-
-def convert(path_in, path_out):
-    list_files = os.listdir(path_in)
-    for f in list_files:
-        path_file = path_in + "/" + f
-        data_tsv = read_data(path_file)
-        vlsp_2021_text = make_form_muc(data_tsv)
-        file_name_out = f[:-3] + "muc"
-        # write_data(path_out +"/" + file_name_out, vlsp_2021_text)
-        print("-->", file_name_out)
-        break
-    return "DONE!"
-
-def read_data(path):
-    data = []
-    with open(path, "r", encoding="utf-8") as file:
-        paragraph = []
-        lines = file.readlines()
-        for line in lines[4:]:
-            line = line.strip()
-            # print(line)
-            if "#" in line:
-                continue
-            elif line == '' and paragraph != []:
-                data.append(paragraph)
-                paragraph = []
-            else:
-                paragraph.append(line)
-    data.append(paragraph)
-    return data
-
-def write_data(path, data):
-    file = open(path, "w", encoding="utf-8")
-    file.write(data)
-    file.close()
 
 def bubble_sort(arr):
     for i in range(len(arr)):
@@ -259,8 +278,47 @@ def bubble_sort(arr):
                 arr[j] = temp
     return arr
 
-if __name__ == '__main__':
-    path_in = "E:/VLSP/Data-VLSP-2021/Data-TSV"
-    path_out = "E:/VLSP/Data-VLSP-2021/Data-Muc"
+
+def convert(path, path_out):
+    data = []
+
+    list_files = os.listdir(path)
+    for f in list_files:
+        file_name = path + "/" + f
+        with open(file_name, "r", encoding="utf-8") as file:
+            d = file.readlines()
+            # print(d)
+            vlsp_2021_text = make_Muc(d)
+            file_out = f[:-3] + "muc"
+            data.append([file_out, vlsp_2021_text])
+            # print(f)
+            # # print(path)
+            # # write_data("E:/VLSP/VLSP-2021/Data_VLSP_2021/"+f[:-5]+"muc", vlsp_2021_text)
+            write_data(path_out+"/" + f[:-3] + "muc", vlsp_2021_text)
+            # print(c)
+            # print(vlsp_2021_text)
+    # print(dict_ner)
+    # return data
+    pass
+
+def write_data(path, data):
+    file = open(path, "w", encoding="utf-8")
+    file.write(data)
+    file.close()
+    print("-->", path)
+    pass
+
+def main():
+    # path_in = "E:/VLSP/data/Data-TSV"
+    # path_out = "E:/VLSP/data/Data-Muc"
+    # path_in = "E:/VLSP/data/Data-TSV-Addtion"
+    # path_out = "E:/VLSP/data/Data-Muc-Addtion"
+    path_in = "E:/VLSP/Data-VLSP-2021-v2/tsv"
+    path_out = "E:/VLSP/Data-VLSP-2021-v2/muc"
     convert(path_in, path_out)
-    print("Done!")
+
+    return "DONE!"
+
+
+if __name__ == '__main__':
+    main()

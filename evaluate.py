@@ -2,8 +2,8 @@ import re
 import os
 import sys
 
-stringRegex = "<ENAMEX TYPE[^>]*>([^<]*)</ENAMEX>"
-nestStringRegex = "<ENAMEX TYPE[^>]*>([^<]*<ENAMEX TYPE[^>]*>([^<]*<ENAMEX TYPE[^>]*>([^<]*<ENAMEX TYPE[^>]*>[^<]*</ENAMEX>[^<]*|[^<]*)*</ENAMEX>[^<]*|[^<]*)*</ENAMEX>[^<]*)*</ENAMEX>"
+stringRegex = "<ENAMEX TYPE[^>]*>([^<]+)</ENAMEX>"
+nestStringRegex = "<ENAMEX TYPE[^>]*>([^<]*<ENAMEX TYPE[^>]*>([^<]*<ENAMEX TYPE[^>]*>([^<]*<ENAMEX TYPE[^>]*>[^<]+</ENAMEX>[^<]*|[^<]+)*</ENAMEX>[^<]*|[^<]*)*</ENAMEX>[^<]*)*</ENAMEX>"
 list_ner = ['ADDRESS', 'DATETIME', 'DATETIME-DATE', 'DATETIME-DATERANGE',
             'DATETIME-DURATION', 'DATETIME-SET', 'DATETIME-TIME',
             'DATETIME-TIMERANGE', 'EMAIL', 'EVENT', 'EVENT-CUL',
@@ -20,7 +20,8 @@ list_ner = ['ADDRESS', 'DATETIME', 'DATETIME-DATE', 'DATETIME-DATERANGE',
 
 def get_content(file_path):
     if not os.path.exists(file_path):
-        sys.exit("An error occurred while opening the file", file_path)
+        print(file_path)
+        sys.exit("An error occurred while opening the file")
     with open(file_path, "r", encoding='utf-8') as f:
         content = f.read()
     return content
@@ -29,6 +30,7 @@ def get_content(file_path):
 
 def get_original(content):
     # tách các thành phần có chứa "<ENAMEX .." ra khỏi câu:
+    # return re.sub(r'<ENAMEX TYPE="[A-Z|\-]*">|</ENAMEX>', '', content)
     return re.sub(r'<ENAMEX TYPE="[A-Z|\-]*">|</ENAMEX>', '', content).strip(" ").replace("  ", " ")
     pass
 
@@ -53,8 +55,8 @@ def extractEntities(original_content, labeled_content):
     nestedEntities = dict()
     labeledNestedEntities = findStringRegex(labeled_content, nestStringRegex)
 
-    # print("labeledEntities =",labeledEntities)
-    # print("labeledNestedEntities =",labeledNestedEntities)
+    print("labeledEntities =",labeledEntities)
+    print("labeledNestedEntities =",labeledNestedEntities)
     index = 0
     for key in labeledNestedEntities.keys():
         entity = get_original(labeledNestedEntities.get(key))
