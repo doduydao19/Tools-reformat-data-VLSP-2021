@@ -55,8 +55,8 @@ def extractEntities(original_content, labeled_content):
     nestedEntities = dict()
     labeledNestedEntities = findStringRegex(labeled_content, nestStringRegex)
 
-    print("labeledEntities =",labeledEntities)
-    print("labeledNestedEntities =",labeledNestedEntities)
+    # print("labeledEntities =",labeledEntities)
+    # print("labeledNestedEntities =",labeledNestedEntities)
     index = 0
     for key in labeledNestedEntities.keys():
         entity = get_original(labeledNestedEntities.get(key))
@@ -101,26 +101,24 @@ def extractEntities(original_content, labeled_content):
     return entities
     pass
 
+
 def print_table(table_scores, table_F_score):
     total_TP = 0
     total_TP_FP = 0
     total_TP_FN = 0
     header = ["NER", "TP", "TP+FP", "TP+FN", "P", "R", "F1"]
-    for i in header:
-        print(i, end="\t\t\t")
-    print()
+
+    print("%-20s%-10s%-10s%-10s%-10s%-10s%-10s" % (
+    header[0], header[1], header[2], header[3], header[4], header[5], header[6]))
+
     for i in range(len(table_scores)):
-        print(list_ner[i], end="\t\t\t")
-        for j in table_scores[i]:
-            print(j, end="\t\t")
-        for j in table_F_score[i]:
-            print(j, end="\t\t")
-        print()
+        print("%-20s%-10d%-10d%-10d%-10.4f%-10.4f%-10.4f" % (
+        list_ner[i], table_scores[i][0], table_scores[i][1], table_scores[i][2], table_F_score[i][0],
+        table_F_score[i][1], table_F_score[i][2]))
+
         total_TP += table_scores[i][0]
         total_TP_FP += table_scores[i][1]
         total_TP_FN += table_scores[i][2]
-
-        # print(table_scores[i], table_F_score[i])
 
     if total_TP_FP == 0:
         P = 0
@@ -134,8 +132,10 @@ def print_table(table_scores, table_F_score):
         F = 0
     else:
         F = 2 * P * R / (P + R)
-    print("--->Overall:" + "\t" + str(total_TP) + "\t" + str(total_TP_FP) + "\t" + str(total_TP_FN) + "\t" + str(P) + "\t" + str(R) + "\t" + str(F))
+
+    print("%-20s%-10d%-10d%-10d%-10.4f%-10.4f%-10.4f" % ("--->Overall", total_TP, total_TP_FP, total_TP_FN, P, R, F))
     pass
+
 
 def get_scores(table_scores):
     table_F_score = []
@@ -157,6 +157,7 @@ def get_scores(table_scores):
             table_F_score[i][2] = 2 * table_F_score[i][0] * table_F_score[i][1] / (
                     table_F_score[i][0] + table_F_score[i][1])
     return table_F_score
+
 
 def evaluate(path_test, path_anno, toplevel):
     score_total = [0, 0, 0, 0, 0, 0]
@@ -252,7 +253,6 @@ def evaluate(path_test, path_anno, toplevel):
 if __name__ == '__main__':
     path_test = "E:/VLSP/Evaluate/Test"
     path_anno = "E:/VLSP/Evaluate/Ann"
-
     print("=====================Top-level evaluation=====================")
     evaluate(path_test, path_anno, toplevel=True)
 
