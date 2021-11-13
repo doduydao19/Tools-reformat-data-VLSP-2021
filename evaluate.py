@@ -241,7 +241,7 @@ def evaluate(path_test, path_anno, toplevel):
                         for key2 in testEntities.keys():
                             key_2 = key2.split('_')
                             if toplevel:
-                                if key_2[3] == "outer":
+                                if key_2[3] == "inner":
                                     continue
                             for j in range(len(list_ner)):
                                 if key_1[0] == key_2[0] and \
