@@ -317,7 +317,7 @@ if __name__ == '__main__':
         scores = np.array(total_scores).sum(0)
         for j in range(len(scores)):
             nested_score[j] += scores[j]
-
+        print()
     print_overall_eval(top_level_score, nested_score)
 
     print("Evaluate completed!")
