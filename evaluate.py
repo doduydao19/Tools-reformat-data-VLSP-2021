@@ -1,9 +1,10 @@
 import re
 import os
 import sys
+import numpy as np
 
-stringRegex = "<ENAMEX TYPE[^>]*>([^<]+)</ENAMEX>"
-nestStringRegex = "<ENAMEX TYPE[^>]*>([^<]*<ENAMEX TYPE[^>]*>([^<]*<ENAMEX TYPE[^>]*>([^<]*<ENAMEX TYPE[^>]*>[^<]+</ENAMEX>[^<]*|[^<]+)*</ENAMEX>[^<]*|[^<]*)*</ENAMEX>[^<]*)*</ENAMEX>"
+stringRegex = "<ENAMEX TYPE[^>]*>[^<]+</ENAMEX>"
+nestStringRegex = "<ENAMEX TYPE[^>]*>([^<]*<ENAMEX TYPE[^>]*>([^<]*<ENAMEX TYPE[^>]*>([^<]*<ENAMEX TYPE[^>]*>[^<]+</ENAMEX>[^<]*|[^<]+)</ENAMEX>[^<]*|[^<]*)*</ENAMEX>[^<]*)*</ENAMEX>"
 list_ner = ['ADDRESS', 'DATETIME', 'DATETIME-DATE', 'DATETIME-DATERANGE',
             'DATETIME-DURATION', 'DATETIME-SET', 'DATETIME-TIME',
             'DATETIME-TIMERANGE', 'EMAIL', 'EVENT', 'EVENT-CUL',
@@ -38,12 +39,21 @@ def get_original(content):
 def findStringRegex(text, rule):
     matchList = dict()
     regex = re.compile(rule)
-    id = 0
-    while regex.search(text, id) is not None:
-        regexMatcher = regex.search(text, id)
-        # print(regexMatcher.group())
-        matchList[regexMatcher.start()] = regexMatcher.group()
-        id = regexMatcher.end() + 1
+    # id = 0
+    # while regex.search(text, id) is not None:
+    #     regexMatcher = regex.search(text, id)
+    #     # print(regexMatcher.group())
+    #     matchList[regexMatcher.start()] = regexMatcher.group()
+    #     id = regexMatcher.end() + 1
+
+
+    id = len(text)
+    while id > -1:
+        if regex.search(text, id) is not None:
+            regexMatcher = regex.search(text, id)
+            matchList[regexMatcher.start()] = regexMatcher.group()
+        id = id - 1
+    # print(matchList)
     return matchList
     pass
 
@@ -97,10 +107,9 @@ def extractEntities(original_content, labeled_content):
                 break
         if not flag:
             entities[str(begin_entity) + "_" + str(end_entity) + "_" + type + "_" + "outer"] = entity
-
+    # print(entities)
     return entities
     pass
-
 
 def print_table(table_scores, table_F_score):
     total_TP = 0
@@ -160,7 +169,6 @@ def get_scores(table_scores):
 
 
 def evaluate(path_test, path_anno, toplevel):
-    score_total = [0, 0, 0, 0, 0, 0]
     if not os.path.exists(path_test):
         sys.exit("An error occurred while opening the folder test data")
     if not os.path.exists(path_anno):
@@ -196,44 +204,54 @@ def evaluate(path_test, path_anno, toplevel):
                 test_content = get_content(path_test_subFolder + "/" + testFile)
                 original_content = get_original(labeled_content)
 
-                testEntities = extractEntities(original_content, test_content)
-                annEntities = extractEntities(original_content, labeled_content)
+                if labeledFile != testFile:
+                    sys.exit("The annotation file is not equal to test file")
+                else:
+                    # print("testEntities")
+                    testEntities = extractEntities(original_content, test_content)
+                    # print("annEntities")
+                    annEntities = extractEntities(original_content, labeled_content)
 
-                # count TP+FP
-                for key in testEntities.keys():
-                    key = key.split('_')
-                    if toplevel:
-                        if key[3] == "inner":
-                            continue
-                    for j in range(len(list_ner)):
-                        if key[2] == list_ner[j]:
-                            table_scores[j][1] += 1
-                # count TP+FN
-                for key in annEntities.keys():
-                    key = key.split('_')
-                    # print(key)
-                    if toplevel:
-                        if key[3] == "inner":
-                            continue
-                    for j in range(len(list_ner)):
-                        if key[2] == list_ner[j]:
-                            table_scores[j][2] += 1
-                # count TP
-                for key1 in annEntities.keys():
-                    key_1 = key1.split('_')
-                    for key2 in testEntities.keys():
-                        key_2 = key2.split('_')
+                    # count TP+FP
+                    for key in testEntities.keys():
+                        key = key.split('_')
                         if toplevel:
-                            if key_2[3] == "inner":
+                            if key[3] == "inner":
                                 continue
                         for j in range(len(list_ner)):
-                            if key_1[0] == key_2[0] and \
-                                    key_1[1] == key_2[1] and \
-                                    key_1[2] == key_2[2] and \
-                                    annEntities.get(key1) == testEntities.get(key2) and \
-                                    key_1[2] == list_ner[j]:
-                                table_scores[j][0] += 1
+                            if key[2] == list_ner[j]:
+                                table_scores[j][1] += 1
+                    # count TP+FN
+                    for key in annEntities.keys():
+                        key = key.split('_')
+                        # print(key)
+                        if toplevel:
+                            if key[3] == "inner":
+                                continue
+                        for j in range(len(list_ner)):
+                            if key[2] == list_ner[j]:
+                                table_scores[j][2] += 1
+                    # count TP
+                    # print("TP:")
 
+                    # print("annot:", annEntities.keys())
+                    # print("test:", testEntities.keys())
+                    for key1 in annEntities.keys():
+                        key_1 = key1.split('_')
+                        for key2 in testEntities.keys():
+                            key_2 = key2.split('_')
+                            if toplevel:
+                                if key_2[3] == "outer":
+                                    continue
+                            for j in range(len(list_ner)):
+                                if key_1[0] == key_2[0] and \
+                                        key_1[1] == key_2[1] and \
+                                        key_1[2] == key_2[2] and \
+                                        key_1[3] == key_2[3] and \
+                                        annEntities.get(key1) == testEntities.get(key2) and \
+                                        key_1[2] == list_ner[j]:
+                                    table_scores[j][0] += 1
+                            # print(key_2)
         table_F_score = get_scores(table_scores)
         print_table(table_scores, table_F_score)
 
@@ -241,22 +259,65 @@ def evaluate(path_test, path_anno, toplevel):
             for j in range(len(total_scores[i])):
                 total_scores[i][j] += table_scores[i][j]
     print("\n-----------------------------")
-    print("Total Evaluation")
+    print("Total evaluation of test")
     print("-----------------------------")
     table_F_score = get_scores(total_scores)
     print_table(total_scores, table_F_score)
 
-    return
+    return total_scores
     pass
 
+def print_overall_eval(top, nested):
+    header = ["TP", "TP+FP", "TP+FN", "P", "R", "F1"]
 
-if __name__ == '__main__':
-    path_test = "E:/VLSP/Evaluate/Test"
-    path_anno = "E:/VLSP/Evaluate/Ann"
+    print("\n-----------------------------")
+    print("Total evaluation of all tests")
+    print("-----------------------------")
     print("=====================Top-level evaluation=====================")
-    evaluate(path_test, path_anno, toplevel=True)
-
+    print("%-10s%-10s%-10s%-10s%-10s%-10s" % (header[0], header[1], header[2], header[3], header[4], header[5]))
+    P = top[0]/top[1]
+    R = top[0]/top[2]
+    if P != 0 and R != 0:
+        F1 = (2*P*R)/(P+R)
+        print("%-10d%-10d%-10d%-10.4f%-10.4f%-10.4f" % (top[0], top[1], top[2], P, R, F1))
+    else:
+        print("%-10d%-10d%-10d%-10.4f%-10.4f%-10.4f" % (top[0], top[1], top[2], P, R, 0))
+    # print(top_level_score)
     print("\n=====================Nested evaluation=====================")
-    evaluate(path_test, path_anno, toplevel=False)
+    print("%-10s%-10s%-10s%-10s%-10s%-10s" % (header[0], header[1], header[2], header[3], header[4], header[5]))
+    P = nested[0] / nested[1]
+    R = nested[0] / nested[2]
+    if P != 0 and R != 0:
+        F1 = (2 * P * R) / (P + R)
+        print("%-10d%-10d%-10d%-10.4f%-10.4f%-10.4f" % (nested[0], nested[1], nested[2], P, R, F1))
+    else:
+        print("%-10d%-10d%-10d%-10.4f%-10.4f%-10.4f" % (nested[0], nested[1], nested[2], P, R, 0))
+    # print(nested_score)
+    return
+if __name__ == '__main__':
+    path_test = "E:\VLSP\CacDoiSubmit-20211112T002336Z-001\CacDoiSubmit\DoanXuanDung\VLSP_Bluesky_Team\Test-Data-Output1"
+    path_anno = "E:\VLSP\CacDoiSubmit-20211112T002336Z-001\CacDoiSubmit\Annot"
+    list_tests = os.listdir(path_test)
+    list_annos = os.listdir(path_anno)
+    top_level_score = [0, 0, 0]
+    nested_score = [0, 0, 0]
+    for i in range(len(list_tests)):
+        print("==>>>Test:",list_tests[i])
+        test_folder = path_test + "/" + list_tests[i]
+        anno_folder = path_anno + "/" + list_annos[i]
+        print("\n=====================Top-level evaluation=====================")
+        total_scores = evaluate(test_folder, anno_folder, toplevel=True)
+
+        scores = np.array(total_scores).sum(0)
+        for j in range(len(scores)):
+            top_level_score[j] += scores[j]
+
+        print("\n=====================Nested evaluation=====================")
+        total_scores = evaluate(test_folder, anno_folder, toplevel=False)
+        scores = np.array(total_scores).sum(0)
+        for j in range(len(scores)):
+            nested_score[j] += scores[j]
+
+    print_overall_eval(top_level_score, nested_score)
 
     print("Evaluate completed!")
