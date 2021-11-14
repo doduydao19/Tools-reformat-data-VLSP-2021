@@ -45,14 +45,14 @@ def findStringRegex(text, rule):
     #     # print(regexMatcher.group())
     #     matchList[regexMatcher.start()] = regexMatcher.group()
     #     id = regexMatcher.end() + 1
-
-
-    id = len(text)
-    while id > -1:
-        if regex.search(text, id) is not None:
-            regexMatcher = regex.search(text, id)
+    id = 0
+    while id < len(text):
+        regexMatcher = regex.search(text, id)
+        if regexMatcher is not None:
             matchList[regexMatcher.start()] = regexMatcher.group()
-        id = id - 1
+            id = regexMatcher.end()
+        else:
+            id = len(text)
     # print(matchList)
     return matchList
     pass
