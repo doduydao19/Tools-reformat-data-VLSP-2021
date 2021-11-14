@@ -4,7 +4,7 @@ import sys
 import numpy as np
 
 stringRegex = "<ENAMEX TYPE[^>]*>[^<]+</ENAMEX>"
-nestStringRegex = "<ENAMEX TYPE[^>]*>([^<]*<ENAMEX TYPE[^>]*>([^<]*<ENAMEX TYPE[^>]*>([^<]*<ENAMEX TYPE[^>]*>[^<]+</ENAMEX>[^<]*|[^<]+)</ENAMEX>[^<]*|[^<]*)*</ENAMEX>[^<]*)*</ENAMEX>"
+nestStringRegex = "<ENAMEX TYPE[^>]*>([^<]*<ENAMEX TYPE[^>]*>([^<]*<ENAMEX TYPE[^>]*>([^<]*<ENAMEX TYPE[^>]*>[^<]+</ENAMEX>[^<]*|[^<]+)</ENAMEX>[^<]*|[^<]+)</ENAMEX>[^<]*)*</ENAMEX>"
 list_ner = ['ADDRESS', 'DATETIME', 'DATETIME-DATE', 'DATETIME-DATERANGE',
             'DATETIME-DURATION', 'DATETIME-SET', 'DATETIME-TIME',
             'DATETIME-TIMERANGE', 'EMAIL', 'EVENT', 'EVENT-CUL',
